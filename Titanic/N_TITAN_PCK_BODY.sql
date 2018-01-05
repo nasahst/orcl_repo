@@ -5,7 +5,7 @@ RETURN BOOLEAN
 IS
 
 v_result BOOLEAN := TRUE;
-v_record VARCHAR2(200);
+v_record VARCHAR2(300);
 v_error_count  NUMBER;
 v_error_message VARCHAR2(200);
 v_error_index number;
