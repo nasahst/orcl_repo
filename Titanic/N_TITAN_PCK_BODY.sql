@@ -5,7 +5,7 @@ RETURN BOOLEAN
 IS
 
 v_result BOOLEAN := TRUE;
-v_record VARCHAR2(300);
+v_record VARCHAR2(200);
 v_error_count  NUMBER;
 v_error_message VARCHAR2(200);
 v_error_index number;
@@ -22,8 +22,7 @@ IS
     SELECT
     NULL,
     t_name,
-    NULL,
- --   SUBSTR(SUBSTR(tit.t_name,1,instr(tit.t_name,',')-1),1,8), 
+    trim(SUBSTR(tit.t_name,instr(t_name,' ',1,2))),
     SUBSTR(tit.t_name,1,instr(tit.t_name,',')-1), 
     SUBSTR(tit.t_class,1,1),
     CASE WHEN tit.t_age = 'NA' THEN NULL 
