@@ -107,4 +107,107 @@ RETURN v_result;
 
 END;
 
+PROCEDURE create_cust_sales IS
+ 
+TYPE t_sales IS TABLE OF N_ART_SALES%ROWTYPE INDEX BY BINARY_INTEGER;
+    v_sales t_sales;
+    v_sale N_ART_SALES%ROWTYPE;
+    v_amount number;
+    v_cust_number number;
+    v_custs_processed number;
+    v_previous_date number;
+    
+    CURSOR c_clients IS
+      SELECT DISTINCT 
+      ROWNUM,
+      ntt.t_first_name,
+      ntt.t_last_name,
+      SYSDATE,
+      NULL,
+      NULL
+      FROM n_titanic_target ntt
+      ORDER BY ROWNUM;
+    
+    
+    BEGIN
+    -- clean target table -- temporary
+    EXECUTE IMMEDIATE 'TRUNCATE TABLE N_ART_SALES';   
+    -- find number of customers processing
+    SELECT COUNT(1) INTO v_custs_processed FROM n_titanic_target;
+    
+    
+    OPEN c_clients;
+    
+    LOOP
+    FETCH c_clients INTO v_sale;
+    
+    -- add random purchase amount
+    v_amount := ROUND(dbms_random.value(79,10000),2);
+   -- v_cust_number := ROUND(dbms_random.value(1,v_custs_processed),2);
+    
+    INSERT INTO n_art_sales (
+    T_ID_CUST,
+    T_FIRST_NAM,
+    T_LAST_NAME,
+    T_SALE_DATE,
+    T_CITY_SALES,
+    T_TOTAL_AMOUNT
+    )
+    VALUES (
+    v_sale.t_id_cust,
+    v_sale.t_first_nam,
+    v_sale.t_last_name,
+    v_sale.t_sale_date,
+    NULL,
+    v_amount
+    );
+
+    EXIT WHEN c_clients%NOTFOUND;
+    
+    END LOOP;
+    
+    CLOSE c_clients;
+    
+   COMMIT;
+    
+    FOR cntr IN 1..100000
+    LOOP
+    v_cust_number := ROUND(dbms_random.value(1,v_custs_processed),0);
+    v_amount := ROUND(dbms_random.value(79,10000),2);
+    v_previous_date := ROUND(dbms_random.value(1,365),0);
+      SELECT  
+          ntt.t_id_cust,
+          ntt.t_first_nam,
+          ntt.t_last_name,
+          SYSDATE - v_previous_date,
+          NULL,
+          NULL  
+          INTO v_sale
+          FROM n_art_sales ntt
+          WHERE ntt.t_id_cust = v_cust_number
+          FETCH FIRST 1 ROWS ONLY;
+    
+    INSERT INTO n_art_sales (
+    T_ID_CUST,
+    T_FIRST_NAM,
+    T_LAST_NAME,
+    T_SALE_DATE,
+    T_CITY_SALES,
+    T_TOTAL_AMOUNT
+    )
+    VALUES (
+    v_sale.t_id_cust,
+    v_sale.t_first_nam,
+    v_sale.t_last_name,
+    v_sale.t_sale_date,
+    NULL,
+    v_amount
+    );
+    
+    
+    END LOOP;
+ 
+    END;
+
+
 END N_TITAN_PCK;
