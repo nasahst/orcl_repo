@@ -107,7 +107,7 @@ RETURN v_result;
 
 END;
 
-PROCEDURE create_cust_sales IS
+PROCEDURE create_cust_sales (v_spread NUMBER) IS
  
 TYPE t_sales IS TABLE OF N_ART_SALES%ROWTYPE INDEX BY BINARY_INTEGER;
     v_sales t_sales;
@@ -119,10 +119,12 @@ TYPE t_sales IS TABLE OF N_ART_SALES%ROWTYPE INDEX BY BINARY_INTEGER;
     
     CURSOR c_clients IS
       SELECT DISTINCT 
+      NULL,
       ROWNUM,
       ntt.t_first_name,
       ntt.t_last_name,
       SYSDATE,
+      NULL,
       NULL,
       NULL
       FROM n_titanic_target ntt
@@ -170,18 +172,20 @@ TYPE t_sales IS TABLE OF N_ART_SALES%ROWTYPE INDEX BY BINARY_INTEGER;
     
    COMMIT;
     
-    FOR cntr IN 1..100000
+    FOR cntr IN 1..v_spread
     LOOP
     v_cust_number := ROUND(dbms_random.value(1,v_custs_processed),0);
     v_amount := ROUND(dbms_random.value(79,10000),2);
     v_previous_date := ROUND(dbms_random.value(1,365),0);
-      SELECT  
+      SELECT 
+          NULL,
           ntt.t_id_cust,
           ntt.t_first_nam,
           ntt.t_last_name,
           SYSDATE - v_previous_date,
           NULL,
-          NULL  
+          NULL,
+          NULL
           INTO v_sale
           FROM n_art_sales ntt
           WHERE ntt.t_id_cust = v_cust_number
@@ -207,6 +211,49 @@ TYPE t_sales IS TABLE OF N_ART_SALES%ROWTYPE INDEX BY BINARY_INTEGER;
     
     END LOOP;
  
+    END;
+    
+    PROCEDURE update_special_trans IS
+    
+    l_task     VARCHAR2(30);
+    l_sql_stmt VARCHAR2(32767);
+    l_try      NUMBER;
+    l_status   NUMBER;
+    
+BEGIN
+  
+  l_task := 'Parallel_task' || to_char(parallel_seq.nextval);
+
+  DBMS_PARALLEL_EXECUTE.create_task (task_name => l_task);
+
+  DBMS_PARALLEL_EXECUTE.create_chunks_by_rowid(task_name   => l_task,
+                                               table_owner => 'NASA',
+                                               table_name  => 'N_ART_SALES',
+                                               by_row      => TRUE,
+                                               chunk_size  => 100000);
+
+  l_sql_stmt := 'UPDATE N_ART_SALES t 
+                 SET    t.t_special = ''S''
+                 WHERE t.t_total_amount > 4000
+                 AND rowid BETWEEN :start_id AND :end_id';
+
+  DBMS_PARALLEL_EXECUTE.run_task(task_name      => l_task,
+                                 sql_stmt       => l_sql_stmt,
+                                 language_flag  => DBMS_SQL.NATIVE,
+                                 parallel_level => 10);
+
+  
+  l_try := 0;
+  l_status := DBMS_PARALLEL_EXECUTE.task_status(l_task);
+  WHILE(l_try < 2 and l_status != DBMS_PARALLEL_EXECUTE.FINISHED) 
+  Loop
+    l_try := l_try + 1;
+    DBMS_PARALLEL_EXECUTE.resume_task(l_task);
+    l_status := DBMS_PARALLEL_EXECUTE.task_status(l_task);
+  END LOOP;
+
+  DBMS_PARALLEL_EXECUTE.drop_task(l_task);
+    
     END;
 
 
